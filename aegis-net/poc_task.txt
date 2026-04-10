@@ -1,0 +1,4 @@
+# Drop a task here to trigger the pipeline automatically on push
+# This file being modified triggers the GitHub Actions workflow
+
+Explain in 3 sentences why decentralized AI architecture is important for humanity's future
