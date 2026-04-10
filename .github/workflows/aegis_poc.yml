@@ -1,0 +1,55 @@
+name: Aegis.net — Proof of Concept Pipeline
+
+on:
+  # Run manually from GitHub Actions tab with a task input
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task to send to the Aegis.net swarm'
+        required: true
+        default: 'Explain in 3 sentences why decentralized AI is important for humanity'
+
+  # Also runs on every push to the active branch
+  push:
+    branches:
+      - main
+    paths:
+      - 'aegis-net/poc_task.txt'  # Drop a task here to trigger automatically
+
+jobs:
+  aegis_poc_run:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Allows committing output back to repo
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install groq anthropic requests pynacl --break-system-packages 2>/dev/null || \
+          pip install groq anthropic requests pynacl
+
+      - name: Run Aegis.net POC Pipeline
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AEGIS_SIGNING_SECRET: ${{ secrets.AEGIS_SIGNING_SECRET || 'aegis-dev-signing-secret-2026' }}
+          TASK_INPUT: ${{ github.event.inputs.task || 'Explain why decentralized AI matters for humanity' }}
+        run: python aegis-net/poc_pipeline.py
+
+      - name: Commit output to repo memory
+        run: |
+          git config user.name "Aegis.net POC"
+          git config user.email "aegis@noreply.github.com"
+          git add aegis-net/poc_outputs/
+          git diff --staged --quiet || git commit -m "🤖 Aegis POC output — $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
