@@ -1,0 +1,194 @@
+# ============================================================
+# AEGIS.NET — Agent-Model Assignment Configuration
+# Boundary and Restraint Architecture (BRA)
+# Updated: 2026-04-10
+# Repo: cloudesize67-cmd/gemini
+# Branch: claude/aegis-cognitive-framework-ic5Jo
+# ============================================================
+
+orchestrator:
+  name: Supervisor
+  role: >
+    Top-level task intake, routing, trust factor scoring (T_Fa),
+    circuit breaker enforcement, and final output signing.
+  model:
+    provider: anthropic
+    model_id: claude-sonnet-4-20250514
+    api_base: https://api.anthropic.com/v1
+    api_key_env: ANTHROPIC_API_KEY
+  params:
+    max_tokens: 4096
+    temperature: 0.2
+    top_p: 0.95
+  capabilities:
+    - tool_use
+    - mcp_integration
+    - xml_tag_isolation
+    - hmac_output_signing
+    - trust_factor_scoring
+  circuit_breaker:
+    max_failures: 3
+    reset_timeout_seconds: 60
+
+agents:
+
+  sentinel:
+    name: Sentinel
+    role: >
+      Input sanitization, prompt injection detection, OWASP ASI01/ASI02
+      compliance screening. Blocks malicious or out-of-scope inputs
+      before they reach the pipeline.
+    model:
+      provider: groq
+      model_id: meta-llama/llama-prompt-guard-2-86m
+      fallback_model_id: openai/gpt-oss-20b
+      api_base: https://api.groq.com/openai/v1
+      api_key_env: GROQ_API_KEY
+    params:
+      max_tokens: 512
+      temperature: 0.0
+    capabilities:
+      - prompt_injection_detection
+      - owasp_asi01
+      - owasp_asi02
+      - session_isolation_vault
+    trust_threshold: 0.85
+
+  auditor:
+    name: Auditor
+    role: >
+      Deep reasoning and compliance analysis. Reviews agent outputs
+      for policy violations, hallucinations, and ethical boundary
+      breaches. Applies NIST COSAiS hardening checks.
+    model:
+      provider: groq
+      model_id: openai/gpt-oss-120b
+      fallback_model_id: llama-3.3-70b-versatile
+      api_base: https://api.groq.com/openai/v1
+      api_key_env: GROQ_API_KEY
+    params:
+      max_tokens: 4096
+      temperature: 0.1
+      parallel_tool_calls: true
+    capabilities:
+      - deep_reasoning
+      - nist_cosais
+      - owasp_asi08
+      - structured_outputs
+      - chain_of_thought
+    trust_threshold: 0.90
+
+  verifier:
+    name: Verifier
+    role: >
+      Lyapunov stability-style constraint enforcement. Checks that
+      agent state deltas are bounded and convergent. Rejects outputs
+      that violate declared capability overlays or exceed task scope.
+    model:
+      provider: groq
+      model_id: qwen/qwen-3-32b
+      fallback_model_id: openai/gpt-oss-20b
+      api_base: https://api.groq.com/openai/v1
+      api_key_env: GROQ_API_KEY
+    params:
+      max_tokens: 2048
+      temperature: 0.0
+      structured_outputs: true
+    capabilities:
+      - lyapunov_constraint_check
+      - capability_overlay_enforcement
+      - task_scope_validation
+      - xml_tag_verification
+    trust_threshold: 0.95
+
+  architect:
+    name: Architect
+    role: >
+      Autonomous research, code generation, and computer use.
+      Executes long-horizon tasks using micro-packet context passing.
+      Interfaces with the Computer Use module for screen control.
+    model:
+      provider: groq
+      model_id: moonshotai/kimi-k2-instruct-0905
+      fallback_model_id: llama-3.3-70b-versatile
+      api_base: https://api.groq.com/openai/v1
+      api_key_env: GROQ_API_KEY
+    params:
+      max_tokens: 8192
+      temperature: 0.3
+      context_window: 256000
+      parallel_tool_calls: true
+    capabilities:
+      - agentic_coding
+      - computer_use
+      - long_context
+      - web_search
+      - code_execution
+      - micro_packet_context
+    computer_use_module: architect_computer_use.py
+
+# ============================================================
+# PIPELINE FLOW
+# ============================================================
+pipeline:
+  flow:
+    - step: 1
+      agent: sentinel
+      action: sanitize_and_screen_input
+    - step: 2
+      agent: supervisor
+      action: score_trust_and_route_task
+    - step: 3
+      agent: architect
+      action: execute_task_micro_packets
+    - step: 4
+      agent: auditor
+      action: review_output_compliance
+    - step: 5
+      agent: verifier
+      action: enforce_lyapunov_constraints
+    - step: 6
+      agent: supervisor
+      action: sign_output_and_return
+
+  context_strategy: micro_packet   # No full context retransmission
+  signing: hmac_sha256             # HMAC output signing on all agent responses
+  isolation: session_vault         # Each task gets isolated session context
+
+# ============================================================
+# GROQ GLOBAL SETTINGS
+# ============================================================
+groq_global:
+  api_base: https://api.groq.com/openai/v1
+  api_key_env: GROQ_API_KEY
+  batch_discount: 0.50             # 50% cost reduction on batch jobs
+  service_tier: auto               # Auto-selects highest available tier
+
+# ============================================================
+# ANTHROPIC GLOBAL SETTINGS
+# ============================================================
+anthropic_global:
+  api_base: https://api.anthropic.com/v1
+  api_key_env: ANTHROPIC_API_KEY
+  model_family: claude-4
+
+# ============================================================
+# SECURITY HARDENING
+# ============================================================
+security:
+  standards:
+    - OWASP_ASI01
+    - OWASP_ASI02
+    - OWASP_ASI08
+    - NIST_COSAiS
+  signing:
+    algorithm: HMAC-SHA256
+    rsa_backup: RSA-2048
+  trust_factor:
+    scoring_agent: supervisor
+    min_pipeline_score: 0.85
+    reject_below: 0.70
+  circuit_breaker:
+    enabled: true
+    global_max_failures: 5
+    reset_timeout_seconds: 120
